@@ -6,6 +6,12 @@
 
 ### Converts HTML into text of the markdown-flavored variety
 
+## Note on this fork
+
+This fork removes the backwards-incompatible TextOnly change from the original
+repo and ensures that we'll have no future backwards-incompatible surprises
+going forward.
+
 ## Introduction
 
 Ensure your emails are readable by all!
