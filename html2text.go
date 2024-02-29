@@ -18,6 +18,11 @@ type Options struct {
 	PrettyTables        bool                 // Turns on pretty ASCII rendering for table elements.
 	PrettyTablesOptions *PrettyTablesOptions // Configures pretty ASCII rendering for table elements.
 	OmitLinks           bool                 // Turns on omitting links
+
+	// NoAmpSpace specifies that you do not want ampersands to have spaces next
+	// to adjacent elements. This is helpful when sanitizing html displaying as
+	// query parameters.
+	NoAmpSpace bool
 }
 
 // PrettyTablesOptions overrides tablewriter behaviors
@@ -76,7 +81,6 @@ func FromHTMLNode(doc *html.Node, o ...Options) (string, error) {
 	if err := ctx.traverse(doc); err != nil {
 		return "", err
 	}
-
 	text := strings.TrimSpace(newlineRe.ReplaceAllString(
 		strings.Replace(ctx.buf.String(), "\n ", "\n", -1), "\n\n"),
 	)
@@ -124,6 +128,7 @@ type textifyTraverseContext struct {
 	blockquoteLevel int
 	lineLength      int
 	isPre           bool
+	prevAmpersand   bool
 }
 
 // tableTraverseContext holds table ASCII-form related context.
@@ -429,13 +434,19 @@ func (ctx *textifyTraverseContext) emit(data string) error {
 	for _, line := range lines {
 		runes := []rune(line)
 		startsWithSpace := unicode.IsSpace(runes[0])
-		if !startsWithSpace && !ctx.endsWithSpace && !strings.HasPrefix(data, ".") {
+		isAmpersand := data == "&" && ctx.options.NoAmpSpace
+		if !startsWithSpace && !ctx.endsWithSpace &&
+			!strings.HasPrefix(data, ".") && !(isAmpersand || ctx.prevAmpersand) {
 			if err = ctx.buf.WriteByte(' '); err != nil {
 				return err
 			}
 			ctx.lineLength++
 		}
 		ctx.endsWithSpace = unicode.IsSpace(runes[len(runes)-1])
+
+		// We want to ensure we're not incorrectly writing spaces around query
+		// params.
+		ctx.prevAmpersand = isAmpersand
 		for _, c := range line {
 			if _, err = ctx.buf.WriteString(string(c)); err != nil {
 				return err

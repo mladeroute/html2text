@@ -87,6 +87,10 @@ func TestStrippingWhitespace(t *testing.T) {
 			"test&nbsp;&nbsp;&nbsp; text&nbsp;",
 			"test    text",
 		},
+		{
+			"&amp;test",
+			"&test",
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -142,6 +146,10 @@ func TestParagraphsAndBreaks(t *testing.T) {
 		{
 			"<pre>test1\ntest 2\n\ntest  3</pre>",
 			"test1\ntest 2\n\ntest  3",
+		},
+		{
+			"<pre>&amp;test1\ntest 2\n\ntest  3</pre>",
+			"&test1\ntest 2\n\ntest  3",
 		},
 	}
 
@@ -462,10 +470,34 @@ func TestLinks(t *testing.T) {
 			"<a href=\"http://www.google.com\" >http://www.google.com</a>",
 			`http://www.google.com`,
 		},
+		{
+			"&amp;<a href='mailto:contact@example.org'>Contact Us</a>",
+			`&Contact Us ( contact@example.org )`,
+		},
 	}
 
 	for _, testCase := range testCases {
 		if msg, err := wantString(testCase.input, testCase.output); err != nil {
+			t.Error(err)
+		} else if len(msg) > 0 {
+			t.Log(msg)
+		}
+	}
+}
+
+func TestNoAmpSpace(t *testing.T) {
+	testCases := []struct {
+		input  string
+		output string
+	}{
+		{
+			"&amp;<a href='mailto:contact@example.org'>Contact Us</a>",
+			`&Contact Us ( contact@example.org )`,
+		},
+	}
+
+	for _, testCase := range testCases {
+		if msg, err := wantString(testCase.input, testCase.output, Options{NoAmpSpace: true}); err != nil {
 			t.Error(err)
 		} else if len(msg) > 0 {
 			t.Log(msg)
