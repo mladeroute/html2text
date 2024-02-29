@@ -19,8 +19,8 @@ type Options struct {
 	PrettyTablesOptions *PrettyTablesOptions // Configures pretty ASCII rendering for table elements.
 	OmitLinks           bool                 // Turns on omitting links
 
-	// NoAdjacentSymbolSpace specifies that you do not want strings which start
-	// and end with symbols to have spaces next to adjacent elements.
+	// NoAdjacentSymbolSpace specifies that you do not want strings  end with
+	// symbols to have spaces next to adjacent elements.
 	// This is helpful when sanitizing html displaying as query parameters.
 	NoAdjacentSymbolSpace bool
 }
@@ -129,12 +129,12 @@ type textifyTraverseContext struct {
 	options       Options
 	endsWithSpace bool
 
-	// endsWithSymbol is useful for detecting query params.
-	endsWithSymbol  bool
-	justClosedDiv   bool
-	blockquoteLevel int
-	lineLength      int
-	isPre           bool
+	// endsWithQuerySymbol is useful for detecting query params.
+	endsWithQuerySymbol bool
+	justClosedDiv       bool
+	blockquoteLevel     int
+	lineLength          int
+	isPre               bool
 }
 
 // tableTraverseContext holds table ASCII-form related context.
@@ -440,10 +440,10 @@ func (ctx *textifyTraverseContext) emit(data string) error {
 	for _, line := range lines {
 		runes := []rune(line)
 		startsWithSpace := unicode.IsSpace(runes[0])
-		isOnlySymbol := len(data) == 1 && QuerySymbols.MatchString(data) &&
+		isOnlyQuerySymbol := len(data) == 1 && QuerySymbols.MatchString(data) &&
 			ctx.options.NoAdjacentSymbolSpace
 		if !startsWithSpace && !ctx.endsWithSpace &&
-			!strings.HasPrefix(data, ".") && !(isOnlySymbol || ctx.endsWithSymbol) {
+			!strings.HasPrefix(data, ".") && !(isOnlyQuerySymbol || ctx.endsWithQuerySymbol) {
 			if err = ctx.buf.WriteByte(' '); err != nil {
 				return err
 			}
@@ -453,7 +453,7 @@ func (ctx *textifyTraverseContext) emit(data string) error {
 
 		// We want to ensure we're not incorrectly writing spaces around query
 		// params.
-		ctx.endsWithSymbol = QuerySymbols.MatchString(string(data[len(data)-1])) &&
+		ctx.endsWithQuerySymbol = QuerySymbols.MatchString(string(data[len(data)-1])) &&
 			ctx.options.NoAdjacentSymbolSpace
 		for _, c := range line {
 			if _, err = ctx.buf.WriteString(string(c)); err != nil {
