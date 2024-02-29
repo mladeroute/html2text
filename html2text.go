@@ -19,11 +19,15 @@ type Options struct {
 	PrettyTablesOptions *PrettyTablesOptions // Configures pretty ASCII rendering for table elements.
 	OmitLinks           bool                 // Turns on omitting links
 
-	// NoAmpSpace specifies that you do not want ampersands to have spaces next
-	// to adjacent elements. This is helpful when sanitizing html displaying as
-	// query parameters.
-	NoAmpSpace bool
+	// NoAdjacentSymbolSpace specifies that you do not want strings which start
+	// and end with symbols to have spaces next to adjacent elements.
+	// This is helpful when sanitizing html displaying as query parameters.
+	NoAdjacentSymbolSpace bool
 }
+
+var (
+	QuerySymbols = regexp.MustCompile(`[&=?]`)
+)
 
 // PrettyTablesOptions overrides tablewriter behaviors
 type PrettyTablesOptions struct {
@@ -120,15 +124,17 @@ var (
 type textifyTraverseContext struct {
 	buf bytes.Buffer
 
-	prefix          string
-	tableCtx        tableTraverseContext
-	options         Options
-	endsWithSpace   bool
+	prefix        string
+	tableCtx      tableTraverseContext
+	options       Options
+	endsWithSpace bool
+
+	// endsWithSymbol is useful for detecting query params.
+	endsWithSymbol  bool
 	justClosedDiv   bool
 	blockquoteLevel int
 	lineLength      int
 	isPre           bool
-	prevAmpersand   bool
 }
 
 // tableTraverseContext holds table ASCII-form related context.
@@ -434,9 +440,10 @@ func (ctx *textifyTraverseContext) emit(data string) error {
 	for _, line := range lines {
 		runes := []rune(line)
 		startsWithSpace := unicode.IsSpace(runes[0])
-		isAmpersand := data == "&" && ctx.options.NoAmpSpace
+		isOnlySymbol := len(data) == 1 && QuerySymbols.MatchString(data) &&
+			ctx.options.NoAdjacentSymbolSpace
 		if !startsWithSpace && !ctx.endsWithSpace &&
-			!strings.HasPrefix(data, ".") && !(isAmpersand || ctx.prevAmpersand) {
+			!strings.HasPrefix(data, ".") && !(isOnlySymbol || ctx.endsWithSymbol) {
 			if err = ctx.buf.WriteByte(' '); err != nil {
 				return err
 			}
@@ -446,7 +453,8 @@ func (ctx *textifyTraverseContext) emit(data string) error {
 
 		// We want to ensure we're not incorrectly writing spaces around query
 		// params.
-		ctx.prevAmpersand = isAmpersand
+		ctx.endsWithSymbol = QuerySymbols.MatchString(string(data[len(data)-1])) &&
+			ctx.options.NoAdjacentSymbolSpace
 		for _, c := range line {
 			if _, err = ctx.buf.WriteString(string(c)); err != nil {
 				return err

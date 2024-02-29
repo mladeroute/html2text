@@ -470,10 +470,6 @@ func TestLinks(t *testing.T) {
 			"<a href=\"http://www.google.com\" >http://www.google.com</a>",
 			`http://www.google.com`,
 		},
-		{
-			"&amp;<a href='mailto:contact@example.org'>Contact Us</a>",
-			`&Contact Us ( contact@example.org )`,
-		},
 	}
 
 	for _, testCase := range testCases {
@@ -485,7 +481,7 @@ func TestLinks(t *testing.T) {
 	}
 }
 
-func TestNoAmpSpace(t *testing.T) {
+func TestNoAdjacentSymbolSpace(t *testing.T) {
 	testCases := []struct {
 		input  string
 		output string
@@ -494,10 +490,18 @@ func TestNoAmpSpace(t *testing.T) {
 			"&amp;<a href='mailto:contact@example.org'>Contact Us</a>",
 			`&Contact Us ( contact@example.org )`,
 		},
+		{
+			"&amp;<a href='mailto:email=contact@example.org'>email=Contact Us</a>",
+			`&email=Contact Us ( email=contact@example.org )`,
+		},
+		{
+			"&amp;email=<a href='mailto:contact@example.org'>Contact Us</a>",
+			`&email=Contact Us ( contact@example.org )`,
+		},
 	}
 
 	for _, testCase := range testCases {
-		if msg, err := wantString(testCase.input, testCase.output, Options{NoAmpSpace: true}); err != nil {
+		if msg, err := wantString(testCase.input, testCase.output, Options{NoAdjacentSymbolSpace: true}); err != nil {
 			t.Error(err)
 		} else if len(msg) > 0 {
 			t.Log(msg)
